@@ -1,0 +1,62 @@
+Vagrant.configure("2") do |config|
+  config.vm.box ="debian/stretch64"
+  config.vm.box_check_update = false
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory ="384" 
+  end
+
+
+
+  # Install avahi on all machines  
+  config.vm.provision "init",type: "shell",  inline: <<-SHELL
+    apt-get update
+    apt-get install -qq apache2
+
+    apt-get -qq install libapache2-mod-php7.0 php7.0mbstring
+    useradd -m -s /bin/bash -G www-data wiki
+    mkdir /opt/src
+    wget -q -0 /opt/src/dokuwiki.tgz wget https://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.gz
+    TAR ZXF /opt/src/dokuwiki.tgz -C /var/www/html/
+    mv /var/www/html/dokuwiki-2018-04-22b /var/www/html/dokuwiki
+    chown -R wiki:www-data /var/www/html/dokuwiki/
+    chmod -R g+w /var/www/html/dokuwiki/data
+    chmod -R g+w /var/www/html/dokuwiki/conf
+    tar xf /vagrant/wiki-conf.tar -C /
+    rm /var/www/html/dokuwiki/install.php
+
+    mkdir /home/wiki/.ssh
+    cp /vagrant/id_rsa_wiki / home/wiki/.ssh
+    cat /vagrant/id_rsa_wiki.pub >> /home/wiki/.ssh/authorized_keys
+    chmod 700 /home/wiki/.ssh
+    chmod 600 /home/wiki/.ssh/*
+    chown -R wiki:wiki /home/wiki/.ssh
+  SHELL
+    config.vm.define "wiki" do |wik|
+    wik.vm.hostname = "wiki"
+    wik.vm.network "private_network", ip: "192.168.62.16"
+    wik.vm.provision "cron", type: "shell", run: "once", inline: <<-EOF
+      mkdir /home/wiki/.ssh
+      cp /vagrant/id_rsa_wiki / home/wiki/.ssh
+      cat /vagrant/id_rsa_wiki.pub >> /home/wiki/.ssh/authorized_keys
+      chmod 700 /home/wiki/.ssh
+      chmod 600 /home/wiki/.ssh/*
+      chown -R wiki:wiki /home/wiki/.ssh
+    EOF
+  end
+  config.vm.define "back" do |bac|
+    bac.vm.hostname = "backup"
+    bac.vm.network "private_network", ip: "192.168.62.18"
+    bac.vm.provision "cron", type: "shell", run: "once", inline: <<-EOF
+      mkdir /home/wiki/.ssh
+      cp /vagrant/id_rsa_wiki / home/wiki/.ssh
+      cat
+/vagrant/id_rsa_wiki.pub >> /home/wiki/.ssh/authorized_keys
+      chmod 700 /home/wiki/.ssh
+      chmod 600 /home/wiki/.ssh/*
+      chown -R wiki:wiki /home/wiki/.ssh
+    EOF
+    bac.vm.provision "cron", type: "shell", run: "once", inline: <<-EOF
+      echo nan rien
+    EOF
+  end
+end
